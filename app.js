@@ -1,13 +1,12 @@
 const axios = require('axios');
 const fs = require('fs');
 const imgProbe = require('probe-image-size')
-const example = require('./ex.json')
 
 
 const isHDimage = async (url) => {
     let img_data = await imgProbe(url)
     .catch((err) => {console.log("Image quality not checked for url : ",url); return true})
-    return img_data.height >= 1080 && img_data.height >= 1920;
+    return img_data.height >= 1080 && img_data.width >= 1920;
 }
 
 const download_image = (url, image_path) =>{
@@ -28,16 +27,32 @@ const download_image = (url, image_path) =>{
 }
 
 const getUrls = async () =>{
-    let resp = await axios.get('https://www.reddit.com/r/wallpapers/top/.json')
-        metadata = resp.data.data.children[0].data.media_metadata
-        keyList = Object.keys(metadata);
+    let urls = []
+        resp = await axios.get('https://www.reddit.com/r/wallpapers/top/.json')
+        childArray = resp.data.data.children
     
-    urls = []
-    for(var i=0 ; i<keyList.length ; i++){
-        var url = metadata[keyList[i]].s.u
-        url = url.replace(/amp;/g,'')
-        urls.push(url)
+    console.log(childArray.length)
+
+    for(var i=0 ; i<childArray.length ; i++){
+        console.log("Fetching for Url count : ", i+1);
+        if((childArray[i].data).hasOwnProperty("media_metadata")){
+            console.log("This has multiple posts");
+            var keyList = Object.keys(childArray[i].data.media_metadata);
+
+            for(var j=0 ; j<keyList.length ; j++){
+                var url = (childArray[i].data.media_metadata)[keyList[j].toString()].s.u;
+                url = url.replace(/amp;/g,'')
+                urls.push(url)
+            }
+        }
+        else if((childArray[i].data).hasOwnProperty("preview")){
+            
+            var urll = childArray[i].data.preview.images[0].source.url
+            urll = urll.replace(/amp;/g,'')
+            urls.push(urll)
+        }
     }
+    
     return urls;
 }
 
@@ -45,8 +60,7 @@ const download = async (url) =>{
     let isHD = await isHDimage(url);
     console.log("Trying to download ",url);
     if(isHD){
-        let _ = await download_image(url, '../wallpaperImages/'+ (url.split("/")[url.split("/").length-1]).split('.')[0] + '.jpg');
-        //img1 = await download_image(url, '../wallpaperImages/'+ name_gen() + '.jpg');
+        let _ = await download_image(url, '../HD_Wallpapers/'+ (url.split("/")[url.split("/").length-1]).split('.')[0] + '.jpg');
         console.log("Image downloaded : ",url);
     }
     else{
@@ -56,18 +70,18 @@ const download = async (url) =>{
 
 
 (async () => {
-    console.log("home method called");
+    console.log("Preparing Application...");
     try {
-        fs.mkdirSync('../wallpaperImages', 0o776);
+        fs.mkdirSync('../HD_Wallpapers', 0o776);
     }
     catch{
-        console.log("already present")
+        console.log("Folder already present")
     }
 
     let urls = await getUrls()
-    //url = ['https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_150x54dp.png','https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?cs=srgb&dl=pexels-aleksandar-pasaric-325185.jpg&fm=jpg','https://preview.redd.it/cb1iwblmqjz91.png?width=11776&format=png&auto=webp&s=c6d681308544c03e567de719d11f482c7affde85','https://preview.redd.it/1r92hvkmqjz91.jpg?width=3840&format=pjpg&auto=webp&s=93fc0da3fabd8ffdb9c6cdff92016993ccb151c8']
     
-    //console.log(urls)
+    console.log("Pictures Prepared. Starting Download for : ")
+    console.log(urls);
 
     for(var i = 0 ; i<urls.length ; i++)
         await download(urls[i]);
