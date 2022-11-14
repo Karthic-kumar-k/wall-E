@@ -1,2 +1,2 @@
-# wall-E
-wallpaper downloader from subreddit wallpaper
+# HD wallpaper downloader
+HD wallpaper downloader from subreddit wallpaper
