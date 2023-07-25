@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const imgProbe = require('probe-image-size')
+var argument = process.argv ;
 
 
 const isHDimage = async (url) => {
@@ -28,7 +29,11 @@ const download_image = (url, image_path) =>{
 
 const getUrls = async () =>{
     let urls = []
-        resp = await axios.get('https://www.reddit.com/r/wallpapers/top/.json')
+	subbreddit = argument[2] === undefined ? "wallpapers" : argument[2]
+	filter1 = argument[3] === undefined ? "top" : argument[3]
+	filter2 = argument[4] === undefined ? "hour" : argument[4]
+	url = 'https://www.reddit.com/r/'+subbreddit+'/'+filter1+'/.json?t='+filter2
+        resp = await axios.get(url)
         childArray = resp.data.data.children
     
     console.log(childArray.length)
@@ -57,9 +62,10 @@ const getUrls = async () =>{
 }
 
 const download = async (url) =>{
-    let isHD = await isHDimage(url);
+    let isHD = await isHDimage(url)
+	isNonHDWanted = argument[5] === undefined || argument[5] === "n" ? false : true; 
     console.log("Trying to download ",url);
-    if(isHD){
+    if(isNonHDWanted || isHD){
         let _ = await download_image(url, '../HD_Wallpapers/'+ (url.split("/")[url.split("/").length-1]).split('.')[0] + '.jpg');
         console.log("Image downloaded : ",url);
     }
@@ -68,21 +74,29 @@ const download = async (url) =>{
     }
 }
 
+function printHelpMessage(){
+	console.log("First argument is Subreddit name. Default is wallpapers");
+	console.log("Second argument is filter 1. Values can be hot | new | top. Default is top");
+	console.log("Third argument is filter 2. Values can be hour | day | week | month | year | all. Default is hour");
+	console.log("Fourth argument decides whether non HD images can be downloaded. Values can be y | n. Default is n");
+}
 
 (async () => {
     console.log("Preparing Application...");
-    try {
-        fs.mkdirSync('../HD_Wallpapers', 0o776);
-    }
-    catch{
-        console.log("Folder already present")
-    }
+    if(argument[2] === "help")
+	    printHelpMessage();
+    else{
+      try {
+          fs.mkdirSync('../HD_Wallpapers', 0o776);
+      }
+      catch{
+          console.log("Folder already present")
+      }
+      let urls = await getUrls()
+      console.log("Pictures Prepared. Starting Download for : ")
+      console.log(urls);
 
-    let urls = await getUrls()
-    
-    console.log("Pictures Prepared. Starting Download for : ")
-    console.log(urls);
-
-    for(var i = 0 ; i<urls.length ; i++)
-        await download(urls[i]);
+      for(var i = 0 ; i<urls.length ; i++)
+          await download(urls[i]);
+    }
 })();
